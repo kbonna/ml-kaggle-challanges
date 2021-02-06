@@ -34,7 +34,7 @@ def remove_uncorrelated_with_target(data, target_columns: str,
     elif method == 'phik':
         corr = data_copy.phik_matrix(interval_cols = data_copy.columns)
     else: 
-        print('Provide a valid method name.')
+        raise KeyError('Provide a valid method name.')
 
     ''' NOTE FOR LATER: It would be good to store the correlation matrix as an instance property
     when we will put it into the class. Then one can have access to the correlation matrix 
