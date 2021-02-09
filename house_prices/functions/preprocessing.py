@@ -50,7 +50,6 @@ def remove_uncorrelated_with_target(data, target_column: str,
         else:
             corr = data_copy.phik_matrix(interval_cols = data_copy.columns)
     else: 
-        print('Provide a valid method name.')
         raise KeyError('Provide a valid method name.')
     
     # Show features with highest and lowest correlation with price
