@@ -8,7 +8,7 @@ def remove_uncorrelated_with_target(data, target_column: str,
                                     interval_cols: list = None,
                                     verbose: bool = False):
     '''
-    A function that removes features that are weakly correlated to the target column.
+    This function removes features that are weakly correlated to the target column.
     
     Args:
         data (DataFrame): data to remove the uncorrelated columns from,
@@ -46,13 +46,13 @@ def remove_uncorrelated_with_target(data, target_column: str,
         corr = data_copy.corr(method=method)
     elif method == 'phik':
         if interval_cols:
-            corr = data_copy.phik_matrix(interval_cols = interval_cols)
+            corr = data_copy.phik_matrix(interval_cols=interval_cols)
         else:
-            corr = data_copy.phik_matrix(interval_cols = data_copy.columns)
+            corr = data_copy.phik_matrix(interval_cols=data_copy.columns)
     else: 
         raise KeyError('Provide a valid method name.')
     
-    # Show features with highest and lowest correlation with price
+    # Show features with highest and lowest correlation with the target column
     corr_target = corr[target_column]
     corr_target = corr_target.sort_values(ascending=False)
     if verbose:
@@ -73,3 +73,4 @@ def remove_uncorrelated_with_target(data, target_column: str,
               f'and the data now has the shape {data_copy.shape}.')
     
     return data_copy, list(features_to_remove)
+  
