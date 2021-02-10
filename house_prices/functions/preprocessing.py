@@ -1,5 +1,6 @@
 # modify this file and submit PR
 import phik
+from sklearn.feature_selection import VarianceThreshold
 
 def remove_uncorrelated_with_target(data, target_column: str, 
                                     threshold: float = 0.3, 
@@ -73,3 +74,29 @@ def remove_uncorrelated_with_target(data, target_column: str,
               f'and the data now has the shape {data_copy.shape}.')
     
     return data_copy, list(features_to_remove)
+
+
+def remove_low_variance_features(data, threshold: float = 0.05):
+    '''
+    This function removes features with low variance.
+    
+    Arguments:
+    
+    data (DataFrame): data to remove the low-variance features from
+    threshold (float): minimum variance that the feature needs to have in order to stay in the dataset
+    
+    Returns:
+    
+    data_high_variance (DataFrame): data with the low-variant features removed
+    removed_cols (list): removed columns
+    
+    '''
+    
+    data_copy = data.copy()
+    raw_variances = data_copy.var()
+    means = data_copy.mean()
+    # an attempt to normalize the variance: var/(mean**2) should be lower than the threshold
+    cols_to_drop = [column for column in data.columns if raw_variances[column]/(means[column]**2) < threshold]
+    data_high_variance = data_copy.drop(columns = cols_to_drop)
+    
+    return data_high_variance, cols_to_drop
