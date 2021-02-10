@@ -1,9 +1,9 @@
 # modify this file and submit PR
 
-import warnings
-import pandas as pd
-
 import json
+import warnings
+
+import pandas as pd
 from pandas.api.types import is_numeric_dtype
 
 
@@ -16,6 +16,44 @@ class NotFittedError(Exception):
 
 
 class Imputer:
+    """Reimplementation of SimpleImputer class for DataFrames.
+
+    This class allows to impute empty values in any pandas DataFrame. It is inspired by sklearn's
+    SimpleImputer class which operates on numpy arrays. It support various imputing strategies:
+        - mean: use mean column value (available only for numerical columns)
+        - median: use column median (available only for numerical columns)
+        - most_frequent: use most frequent value
+        - constant: use user provided value
+
+    Before calling .fit method please provide options dictionary. Each key in options dictionary
+    should correspond to single column name in imputed DataFrame. Each value should specify imputing
+    strategy (also as a dictionary).
+
+    Keys for imputing strategy dictionary are:
+        strategy (str):
+            One of available imputing strategies.
+        missing_values (any single Python variable or list of variables; optional)
+            Which values should be marked as missing. Default is float.nan.
+        fill_value (float; optional):
+            User provided fill value for missing values. Only appropriate when strategy is constant.
+        add_indicator (bool; optional):
+            Whether to create separate column indicating missing values. Default is False.
+
+    Instance methods:
+        fit(df):
+            Compute imputed values and store them internally.
+        transform(df, copy=True):
+            Impute missing values in df.
+        fit_transform(df, copy=True):
+            Compute and impute missing values.
+        save_options(filename):
+            Save options dictionary in JSON format.
+
+    Class methods:
+        from_options_file(filename):
+            Alternative constructor to recreate fitted instance from saved JSON file.
+    """
+
     ALLOWED_OPTIONS_KWARGS = {"missing_values", "strategy", "fill_value", "add_indicator", "_fill"}
     ALLOWED_STRATEGIES = {"mean", "median", "most_frequent", "constant"}
 
@@ -56,7 +94,6 @@ class Imputer:
 
     @classmethod
     def validate_options_kwargs(cls, kwargs):
-        strategy = kwargs.get("strategy", "mean")
         try:
             strategy = kwargs["strategy"]
         except KeyError:
@@ -86,7 +123,7 @@ class Imputer:
         if self.options is None:
             raise OptionsNotSetUpError("set up options before fitting")
 
-        for col, kwargs in options.items():
+        for col, kwargs in self.options.items():
             strategy, fill_value, add_indicator, missing_values = self.validate_options_kwargs(
                 kwargs
             )
@@ -124,7 +161,7 @@ class Imputer:
             nan_indicator = df[col].isin(kwargs["missing_values"])
             df.loc[nan_indicator, col] = kwargs["_fill"]
             if kwargs["add_indicator"]:
-                df[col + "_missing"] = nan_indicator
+                df[col + "_missing"] = nan_indicator.astype("int")
         return df
 
     def fit_transform(self, df, copy=True):
@@ -135,4 +172,4 @@ class Imputer:
         if self.options is None:
             raise OptionsNotSetUpError("set up options before saving")
         with open(filename, "w") as f:
-            f.write(json.dumps(options, indent=2))
+            f.write(json.dumps(self.options, indent=2))
