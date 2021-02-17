@@ -134,7 +134,7 @@ class Imputer:
 
             if strategy in ("mean", "median") and not is_numeric_dtype(df[col]):
                 raise TypeError(
-                    f"{strategy} strategy is not suitable " + f"for non numerical data in {col}"
+                    f"{strategy} strategy is not suitable for non numerical data in {col}"
                 )
 
             if strategy == "constant":
@@ -180,7 +180,7 @@ class Imputer:
 
 
 def removeOutliers(data: pd.DataFrame, method: str, treshold: float):
-     """ 
+    """ 
     Function try to find outliers in given data set using one of available methods: DBSSCAN, OneClassSVN, IsolationForest. 
     Next step is reduce number of outliers to given treshold. Where treshold is percentage of population.
     Value 0.05 means that function will return data set without 5% of population which were marked as outlier.
@@ -194,10 +194,11 @@ def removeOutliers(data: pd.DataFrame, method: str, treshold: float):
         Data Frame without observation marked as outliers.
 
     """
-    
-    methods = {'DBSSCAN':  DBSCAN(eps = 1_500),
-         'SVN': OneClassSVM(kernel = 'linear', nu = .05),
-         'IsolationForest': IsolationForest( behaviour = 'new', random_state = 1, contamination= treshold)}
+    methods = {
+        'DBSSCAN':  DBSCAN(eps = 1_500),
+        'SVN': OneClassSVM(kernel = 'linear', nu = .05),
+        'IsolationForest': IsolationForest(behaviour = 'new', random_state = 1, contamination= treshold)
+    }
     model = methods[method]
     outliers = model.fit_predict(data)
     
