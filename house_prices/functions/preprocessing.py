@@ -179,8 +179,8 @@ class Imputer:
             f.write(json.dumps(self.options, indent=2))
 
 
-def removeOutliers(data: pd.DataFrame, method: str, treshold: float):
-     """ 
+def removeOutliers(data: pd.DataFrame, method: str, treshold: float, model_kwargs):
+    """ 
     Function try to find outliers in given data set using one of available methods: DBSSCAN, OneClassSVN, IsolationForest. 
     Next step is reduce number of outliers to given treshold. Where treshold is percentage of population.
     Value 0.05 means that function will return data set without 5% of population which were marked as outlier.
@@ -194,17 +194,35 @@ def removeOutliers(data: pd.DataFrame, method: str, treshold: float):
         Data Frame without observation marked as outliers.
 
     """
+    dataCopy = data.copy()
+    DBS_kwargs = IF_kwargs = SVN_kwargs= {}
     
-    methods = {'DBSSCAN':  DBSCAN(eps = 1_500),
-         'SVN': OneClassSVM(kernel = 'linear', nu = .05),
-         'IsolationForest': IsolationForest( behaviour = 'new', random_state = 1, contamination= treshold)}
+    if method == 'DBSSCAN':
+        DBS_kwargs = model_kwargs
+    if method == "SVN":
+        SVN_kwargs = model_kwargs
+    if method == "IsolationForest":
+        IF_kwargs = model_kwargs
+    
+    methods = {
+        'DBSSCAN':  DBSCAN(**DBS_kwargs),
+        'SVN': OneClassSVM(**SVN_kwargs),
+        'IsolationForest': IsolationForest(**IF_kwargs)}
+    
     model = methods[method]
-    outliers = model.fit_predict(data)
+    print(f'Model to detect outliers is {method} with parameters {model_kwargs}')
+    outliers = model.fit_predict(dataCopy)
     
-    lowerBound = np.floor(treshold * len(data))
-    toRemove = data.loc[outliers==-1 ,:].index
+    
+    
+    lowerBound = np.floor(treshold * len(dataCopy))
+    
+    print(f'Detected {np.sum(outliers==-1)} outliers')
+    print(f'Removing {int(min(lowerBound, np.sum(outliers==-1))) } outliers from oryginal data set')
+    
+    toRemove = dataCopy.loc[outliers==-1 ,:].index
     toRemove = toRemove[: int(min(lowerBound, len(toRemove)))]
-    return data.drop(toRemove)
+    return dataCopy.drop(toRemove)
 
 def removeHighlyCorreletedFeatures(data: pd.DataFrame, threshold: float, method: str):
     """ 
@@ -219,20 +237,34 @@ def removeHighlyCorreletedFeatures(data: pd.DataFrame, threshold: float, method:
         Data Frame with not correleted features between each other.
 
     """
+    unCorrelatedFeatures = list()
+    dataCopy = data.copy()
+    originalColumns = dataCopy.columns
+    
+    if method in ['pearson','kendall','spearman']:
+        corr_data = dataCopy.corr(method=method)
+    elif method == 'phik':
+        if interval_cols:
+            corr_data = dataCopy.phik_matrix(interval_cols=interval_cols)
+        else:
+            corr_data = dataCopy.phik_matrix(interval_cols=data_copy.columns)
+    else: 
+        raise KeyError('Provide a valid method name.')
     
     
-    unCorrelatedFeatures = set()
     
-    corr_data = data1.corr(method=method)
+    
     corr_data = corr_data[np.abs(corr_data) < threshold]
-    unCorrelatedFeatures.add(corr_data.columns[0])
+    unCorrelatedFeatures.append(corr_data.columns[0])
     columnsToCheck = corr_data[corr_data.columns[0]].dropna().index
     for column in columnsToCheck:
         previousColumns = corr_data.loc[corr_data.index.isin(unCorrelatedFeatures),column]
         if np.sum(previousColumns < threshold) == len(unCorrelatedFeatures):
-            unCorrelatedFeatures.add(column)
+            unCorrelatedFeatures.append(column)
     
-    return data[unCorrelatedFeatures]
+    print(f'Columns {list(set(originalColumns) & set(unCorrelatedFeatures))} low correlated between each other')
+    
+    return dataCopy[unCorrelatedFeatures]
 
 def remove_uncorrelated_with_target(data, target_column: str, 
                                     threshold: float = 0.3, 
