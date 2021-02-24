@@ -1,6 +1,7 @@
 # modify this file and submit PR
 import json
 import warnings
+from joblib import dump, load
 
 import pandas as pd
 import phik
@@ -377,3 +378,61 @@ def remove_low_variance_features(data, threshold: float = 0.05):
     data_high_variance = data_copy.drop(columns=cols_to_drop)
 
     return data_high_variance, cols_to_drop
+
+class Encode_categorical:
+    """ Encode categorical features
+    
+    This class allows to encode binary columns. Before use method fit, provide column_names list
+    
+    Args for class:
+        column_names (list): List of categorical columns to encode from dataframe
+        method_drop (str): Optional, type of drop method: 'first' or 'binary'
+    
+    Instance methods:
+    fit(df):
+        Create columns for binary filling.
+    transform(df, copy=True):
+        Impute binary value to columns.
+    fit_transform(df, copy=True):
+        Equivalent to fit(df, copy=True).transform(df, copy=True) but more convenient.
+    save(filename, name_of_instance):
+        Save model fitted in joblib extension.
+    from_file(filename):
+        Read model fitted from file in joblib extension.
+        
+    """
+    
+    def __init__(self, column_names, method_drop='first'):
+        self.column_names = column_names
+        self.method_drop = method_drop
+        
+    def fit(self, df, copy=True):
+        if copy:
+            df = df.copy(deep=True)
+        self.ohe = OneHotEncoder(drop=self.method_drop, 
+                                 sparse=False).fit(df[self.column_names])
+    
+    def transform(self, df, copy=True):
+        if copy:
+            df = df.copy(deep=True)
+        data_cat_transformed = pd.DataFrame(self.ohe.transform(df[self.column_names]), 
+                                        columns = self.ohe.get_feature_names(
+                                            input_features=self.column_names),
+                                        index = df.index)
+        df = pd.concat([df.drop(self.column_names, axis = 1), 
+                               data_cat_transformed], axis = 1)
+        return df
+
+    def fit_transform(self, df):
+        self.fit(df,copy=True)
+        return self.transform(df, copy=True)
+    
+    def save(self, filename, name_of_instance):
+        if not hasattr(name_of_instance, 'ohe'):
+            raise TypeError("Fit model before saving")
+        dump(self.ohe, filename) 
+        
+    def from_file(self, filename):
+        if not os.path.isfile(filename):
+            raise TypeError("Save model before reading")
+        self.ohe = load(filename) 
