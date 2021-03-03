@@ -1,14 +1,17 @@
 # modify this file and submit PR
-import json
-import warnings
 from joblib import dump, load
+import json
+import os
+import warnings
 
+import numpy as np
 import pandas as pd
 import phik
 from pandas.api.types import is_numeric_dtype
 from sklearn.cluster import DBSCAN
 from sklearn.ensemble import IsolationForest
 from sklearn.feature_selection import VarianceThreshold
+from sklearn.preprocessing import OneHotEncoder
 from sklearn.svm import OneClassSVM
 
 
@@ -180,12 +183,12 @@ class Imputer:
             f.write(json.dumps(self.options, indent=2))
 
 
-def removeOutliers(data: pd.DataFrame, method: str, treshold: float, model_kwargs):
+def remove_outliers(data: pd.DataFrame, method: str, threshold: float, model_kwargs = None):
     """
     Function try to find outliers in given data set using one of available methods: DBSSCAN, OneClassSVN, IsolationForest.
-    Next step is reduce number of outliers to given treshold. Where treshold is percentage of population.
+    Next step is reduce number of outliers to given threshold. Where threshold is percentage of population.
     Value 0.05 means that function will return data set without 5% of population which were marked as outlier.
-    If algorithm detected number of outliers less than treshold then funtion remove all detected outliers from population.
+    If algorithm detected number of outliers less than threshold then funtion remove all detected outliers from population.
 
     Args:
         data (Pd.DataFrame): Data set which should contains only features.
@@ -196,18 +199,18 @@ def removeOutliers(data: pd.DataFrame, method: str, treshold: float, model_kwarg
 
     """
     dataCopy = data.copy()
-    DBS_kwargs = IF_kwargs = SVN_kwargs = {}
+    DBS_kwargs = IF_kwargs = SVM_kwargs = {}
 
     if method == "DBSSCAN":
         DBS_kwargs = model_kwargs
     if method == "SVN":
-        SVN_kwargs = model_kwargs
+        SVM_kwargs = model_kwargs
     if method == "IsolationForest":
         IF_kwargs = model_kwargs
 
     methods = {
         "DBSSCAN": DBSCAN(**DBS_kwargs),
-        "SVN": OneClassSVM(**SVN_kwargs),
+        "SVM": OneClassSVM(**SVM_kwargs),
         "IsolationForest": IsolationForest(**IF_kwargs),
     }
 
@@ -215,7 +218,7 @@ def removeOutliers(data: pd.DataFrame, method: str, treshold: float, model_kwarg
     print(f"Model to detect outliers is {method} with parameters {model_kwargs}")
     outliers = model.fit_predict(dataCopy)
 
-    lowerBound = np.floor(treshold * len(dataCopy))
+    lowerBound = np.floor(threshold * len(dataCopy))
 
     print(f"Detected {np.sum(outliers==-1)} outliers")
     print(f"Removing {int(min(lowerBound, np.sum(outliers==-1))) } outliers from oryginal data set")
@@ -229,7 +232,7 @@ def removeHighlyCorreletedFeatures(data: pd.DataFrame, threshold: float, method:
     """
     Function calculates correlation between features and removes one of these features which are highly correleted.
     Warning: if two features are highly correleted then function take first feature from list data.columns.
-    Highly correleted features are these which absolute value of correlation is bigger than treshold.
+    Highly correleted features are these which absolute value of correlation is bigger than threshold.
     Args:
         data (Pd.DataFrame): Data set which should contains only features.
         threshold (float): Value between 0 and 1.
@@ -379,7 +382,7 @@ def remove_low_variance_features(data, threshold: float = 0.05):
 
     return data_high_variance, cols_to_drop
 
-class Encode_categorical:
+class CategoricalEncoder:
     """ Encode categorical features
     
     This class allows to encode binary columns. Before use method fit, provide column_names list
